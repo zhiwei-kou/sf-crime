@@ -128,6 +128,7 @@ data$meth <-ifelse(regexpr("METHAMPHETAMINE|AMPHETAMINE|METH-AMPHETAMINE",
                            data$Descript) != -1, 1, 0)
 data$opium <- ifelse(regexpr("OPIUM", data$Descript) != -1, 1, 0)
 
+
 sum(is.na(data$CatDesc))
 
 ## for now just drop 2019
@@ -148,8 +149,12 @@ create_counts(data, quo(Category))
 create_counts(data, quo(PdDistrict))
 create_counts(data, quo(Resolution))
 
+library(scales)
+
 relations <- data %>% group_by(Category, Descript) %>% count(sort=TRUE)
 over_time <- data %>% group_by(year, CatDesc) %>% count(sort=TRUE)
+
+resolution_cat <- data %>% group_by(Category, Resolution) %>% count(sort=T)
 
 ggplot(data=over_time) + geom_bar(aes(x=CatDesc, 
                                       y=n, fill=CatDesc), stat="identity") +
@@ -178,15 +183,36 @@ ggplot(data=filter(categories, top10bool==1)) + geom_bar(aes(x=Category, y=n,
 # larceny/theft increasing over the years
 
 year_count <- create_counts(data, quo(year))
-ggplot(data=year_count[-16,]) + geom_line(aes(x=year, y=n)) + 
-  theme_bw() + ylab("Count") + geom_vline(xintercept=2016) +  
-  geom_vline(xintercept=2018)
+year_count <- left_join(year_count, sf_pop, by="year")
+year_count <- year_count %>% mutate(crime_rate=n/pop*100000)
+
+ggplot(data=year_count) + geom_line(aes(x=year, y=crime_rate)) + 
+  theme_bw() + ylab("Count") #+ geom_vline(xintercept=2016) +  
+  #geom_vline(xintercept=2018)
+
+### SF POP DATA
+
+sf_pop <- data.frame(year=2003:2018, 
+                     pop=c(781870,780699, 779655, 782928, 791334,798673,
+                           801799,809753, 820194,833120, 844066,
+                            854421,864783,872463, 880418,880418 # assuming same
+                           ))
 
 year_count_pd <- data %>% group_by(year, PdDistrict) %>% count()
-ggplot(data=year_count_pd[year_count_pd$year!=2018,]) + geom_line(aes(x=year, y=n, color=factor(PdDistrict))) +
-  theme_bw() + ylab("Count")+ geom_vline(xintercept=2016) +  
-  geom_vline(xintercept=2018)
+year_count_pd <- left_join(year_count_pd, sf_pop, by="year")
+year_count_pd <- year_count_pd %>% mutate(crime_rate=n/pop*100000)
 
+ggplot() + geom_line(data=year_count_pd, aes(x=year, y=crime_rate,
+                                             color=factor(PdDistrict))) +
+  #geom_line(data=year_count, aes(x=year, y=n)) + 
+  theme_bw() + ylab("Rate per 100,000 Residents") + scale_y_continuous(label=comma) + 
+  scale_color_discrete(name="Police District") + ggtitle("Crime over Time") 
+
+year_count_pd2018 <- data %>% filter(year==2018) %>% 
+  group_by(PdDistrict, CatDesc) %>% count()
+
+year_count_pd2018_2 <- data %>% filter(year==2018) %>% 
+  group_by(PdDistrict, Category) %>% count(sort=T)
 
 date_count <- create_counts(data, quo(Date))
 ggplot(data=date_count) + geom_line(aes(x=Date, y=n)) + theme_bw() +
@@ -198,15 +224,22 @@ ggplot(data=date_count) + geom_density(aes(x=n), alpha=0.2) +
   geom_bar(aes(x=n),alpha=0.8) + 
   theme_bw() + ylab("Frequency") + xlab("Number of Crimes in a Given Day")
 
-month_count <- data %>% group_by(month, day, year) %>% count()
+month_count <- data %>% group_by(year, month) %>% count()
+month_count <- left_join(month_count, sf_pop, by="year")
+month_count <- month_count %>% mutate(crime_rate=n/pop*100000)
+
 #month_count$month_year <- interaction(month_count$year, month_count$month, lex.order=T)
 ggplot(data=month_count) + geom_line(aes(x=interaction(year, month, lex.order = T),
-                                         y = n, group = 1)) +
+                                         y = crime_rate, group = 1)) +
+  scale_y_continuous(label=comma) + #, limits=c(9500, 14050))  + 
+  ggtitle("Monthly Crime Counts per 100,000 Resdients over Time") + ylab("Count") + 
   #annotate(geom = "text", x = seq_len(nrow(month_count)), y = 0, label = month_count$month, size = 1) +
-  annotate(geom = "text", x = 2.5 + 16 * (0:15), y = - 10, label = unique(month_count$year), size = 2) +
+  annotate(geom = "text", x = 5 +   12 * (0:15), y = 1100, 
+           label = unique(month_count$year), size = 2) +
   theme_bw() + theme(axis.title.x = element_blank(),
                      axis.text.x = element_blank(),
                      panel.grid.major.x = element_blank(),
+                     axis.ticks = element_blank(),
                      panel.grid.minor.x = element_blank())
 
 library(leaflet)
@@ -289,3 +322,56 @@ ggplot(animated_test,
   # Here comes the gganimate specific bits
   labs(title = 'Year: {closest_state}', x = 'Police District', y = 'Count') +
   transition_states(year, wrap=FALSE) 
+
+
+## census data
+library(tidycensus)
+grab_dates <- function(min_year, max_year){
+  estimates <- c()
+  for(i in seq(min_year, max_year)){
+    val <- get_acs(geography = 'county', variables = 'B01001_001', state='CA',
+    county="San Francisco", year = i)$estimate
+    estimates <- c(estimates, val)
+  }
+  df <- data.frame(year=seq(min_year, max_year), estimate=estimates)
+  return(df)
+}
+sf <- grab_dates(2009, 2017)
+
+variables <- load_variables(2016, "acs5", cache = TRUE)
+
+grab_income <- function(min_year, max_year){
+  
+}
+
+# income
+x3 <- get_acs(geography='county', variables = 'B19127_001', state='CA',
+              county='San Francisco', year = 2016)
+
+### get points and map to census sub division
+library(tigris)
+sf_map <- tracts(state = "CA", county='San Francisco', cb =TRUE)
+test <- data %>% filter(year==2018) %>% drop_na(lat, lng)
+
+
+library(sp)
+
+mapLookup <-  function(data, map){
+  data0 <- data %>% drop_na(lat, lng)
+  data1 <- data0[,c("lng","lat")]
+  
+  spatial_data  <- SpatialPointsDataFrame(coordinates(data1), data)
+  
+  proj4string(spatial_data) <- proj4string(map)
+  
+  over_lay_points <- over(spatial_data, map, returnList=FALSE)
+  results <-  cbind(data0, over_lay_points)
+  return(results)
+}
+
+testing  <- mapLookup(test, sf_map)
+
+
+
+# http://www.sfgenealogy.org/sf/history/hgpop.htm
+# https://www.census.gov/data/developers/data-sets.html

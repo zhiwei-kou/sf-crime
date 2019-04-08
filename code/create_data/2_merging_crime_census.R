@@ -44,3 +44,30 @@ mapped_data  <-  mapLookup(data) # note block_group isnt fine
 #mapped_data2 <- rbind(mapped_data, na_crime)
 
 write_csv(mapped_data, "crime_with_census_ids.csv")
+
+
+##merge this data with desired variables 
+d <- mapped_data 
+d <- as.data.table(d)
+
+d$Date <- as.Date(d$Date,"%m/%d/%Y")
+d[, `:=`(Year = year(Date),
+         Month = month(Date),
+         Hour = hour(Date))]
+
+library(data.table)
+library(dplyr)
+library(tidyr)
+
+
+dc <- d[, .N, by=list(Date, GEOID_tract, Category)]
+## get census variable from load_data.R
+count <- merge(dc, census, by =c("year","GEOID"))
+
+##try something like
+lm(N ~ Male, count)
+
+
+
+
+

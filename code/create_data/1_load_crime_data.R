@@ -130,4 +130,9 @@ data$opium <- ifelse(regexpr("OPIUM", data$Descript) != -1, 1, 0)
 
 sum(is.na(data$CatDesc))
 
+##create variables
+census <- tract_wide[c(1,3,4, 5, 45, 59, 63, 69, 74, 76, 82:92, 116, 122, 140, 144:150)]
+
+
+
 rm(list=(setdiff(ls(),'data')))

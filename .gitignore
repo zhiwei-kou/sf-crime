@@ -1,6 +1,6 @@
 *.DS_Store
 data/crime_with_census_ids.csv
 code/misc/*
-python_modeling/config.py
+code/python_modeling/config.py
 *__pycache__
 *.ipynb_checkpoints

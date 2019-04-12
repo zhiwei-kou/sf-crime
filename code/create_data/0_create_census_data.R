@@ -51,8 +51,19 @@ of_interest <- c(population_vars, income_vars, race_vars,
 of_interest_names <- c(population_names, income_names, race_names,
                        housing_names, mobility_names, education_names)
 
+employment_vars <- paste("B17005_0", c(paste("0", 2:9, sep=""), 10:22), sep="")
+# start at 2 to get rid of extra var name
+employment_names <- gsub("( |!!)", "_", 
+                         gsub("(Estimate!!Total!!|,)","",
+                              variables$label[variables$name %in% employment_vars]))
+of_interest <- c(population_vars, income_vars, race_vars,
+                 housing_vars, mobility_vars, education_vars, employment_vars)
+of_interest_names <- c(population_names, income_names, race_names,
+                       housing_names, mobility_names, education_names, employment_names)
 translation <- data.frame(variable=of_interest, 
                           census_var=of_interest_names, stringsAsFactors = FALSE)
+
+summary(table(translation$census_var))
 
 create_census_data <- function(years, geography){
   data <- data.frame()
@@ -82,6 +93,8 @@ census_data_block2 <- melt(census_data_block, id.vars=c('GEOID', 'NAME', 'year',
                            measure.vars=c('estimate'))
 
 block_wide <- dcast(census_data_block2, GEOID+NAME+year~census_var, mean)
+
+sum(tract_wide$Estimate_Total[tract_wide$year>2012]) == sum(block_wide$Estimate_Total)
 
 write_csv(tract_wide, "census_tract_2009_2017.csv")
 write_csv(block_wide, "census_block_2013_2017.csv")

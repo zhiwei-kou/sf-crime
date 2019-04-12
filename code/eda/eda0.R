@@ -338,11 +338,9 @@ grab_dates <- function(min_year, max_year){
 }
 sf <- grab_dates(2009, 2017)
 
-variables <- load_variables(2016, "acs5", cache = TRUE)
-
-grab_income <- function(min_year, max_year){
-  
-}
+crime_rates <- data %>% group_by(year) %>% count()
+crime_rates2 <- left_join(crime_rates, sf, by="year")
+crime_rates2$rate <- crime_rates2$n/crime_rates2$estimate #per person
 
 # income
 x3 <- get_acs(geography='county', variables = 'B19127_001', state='CA',

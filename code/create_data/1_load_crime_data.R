@@ -68,6 +68,14 @@ data1$Category <- toupper(data1$Category)
 data1$PdDistrict <- toupper(data1$PdDistrict)
 data1$Descript <- toupper(data1$Descript)
 
+# A tibble: 2 x 2
+# year na_pd
+# <int> <int>
+#   1  2018  3951
+# 2  2019   408
+## how many are out of SF by year...
+#high compared to before with just 1 PdDistrict is NA
+
 ## COMBINE 
 data <- full_join(data0, data1)
 
@@ -131,8 +139,6 @@ data$opium <- ifelse(regexpr("OPIUM", data$Descript) != -1, 1, 0)
 sum(is.na(data$CatDesc))
 
 ##create variables
-census <- tract_wide[c(1,3,4, 5, 45, 59, 63, 69, 74, 76, 82:92, 116, 122, 140, 144:150)]
-
-
+#census <- tract_wide[c(1,3,4, 5, 45, 59, 63, 69, 74, 76, 82:92, 116, 122, 140, 144:150)]
 
 rm(list=(setdiff(ls(),'data')))

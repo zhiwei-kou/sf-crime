@@ -43,4 +43,8 @@ mapped_data  <-  mapLookup(data) # note block_group isnt fine
 #nrow(na_crime) + nrow(mapped_data) == nrow(after2009)
 #mapped_data2 <- rbind(mapped_data, na_crime)
 
+## ISSUE for 2018 and 2019
+# 16  2018   5398   5398
+# 17  2019    534    534
+
 write_csv(mapped_data, "crime_with_census_ids.csv")

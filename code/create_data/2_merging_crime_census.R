@@ -47,4 +47,5 @@ mapped_data  <-  mapLookup(data) # note block_group isnt fine
 # 16  2018   5398   5398
 # 17  2019    534    534
 
-write_csv(mapped_data, "crime_with_census_ids.csv")
+write_csv(mapped_data, "data/crime_with_census_ids.csv")
+

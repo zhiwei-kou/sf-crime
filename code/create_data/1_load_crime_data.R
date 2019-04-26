@@ -96,7 +96,8 @@ blue_crime=c("VANDALISM", "LARCENY/THEFT", "STOLEN PROPERTY", "ROBBERY",
              "DRIVING UNDER THE INFLUENCE",  "DISORDERLY CONDUCT", "LIQUOR LAWS", 
              "VEHICLE THEFT", "ASSAULT", "KIDNAPPING", "TRESPASS", 
              "ARSON", "RECOVERED VEHICLE", "BURGLARY", "LARCENY THEFT",
-             "TRAFFIC VIOLATION ARREST", "MOTOR VEHICLE THEFT", "MOTOR VEHICLE THEFT?",
+             "TRAFFIC VIOLATION ARREST", "MOTOR VEHICLE THEFT",
+             "MOTOR VEHICLE THEFT?",
              "VEHICLE IMPOUNDED","VEHICLE MISPLACED")
 
 sex_crime=c("SEX OFFENSES NON FORCIBLE", "SEX OFFENSES FORCIBLE", 
@@ -121,6 +122,10 @@ other_crime=c("MISSING PERSON", "RUNAWAY", "FAMILY OFFENSES",
               "TRAFFIC COLLISION", "FAMILY OFFENSE", "WEAPONS OFFENSE",
               "CASE CLOSURE", "CIVIL SIDEWALKS", "SUSPICIOUS")
 
+violent_crime=c("ROBBERY", "ASSAULT", "KIDNAPPING", 
+                "RAPE", 
+                "HOMICIDE")
+
 data$CatDesc <- ifelse(data$Category %in% white_crime, "WhiteCollar",
                        ifelse(data$Category %in% blue_crime, "BlueCollar", 
                               ifelse(data$Category %in% drug_crime, "Drug", 
@@ -136,9 +141,23 @@ data$meth <-ifelse(regexpr("METHAMPHETAMINE|AMPHETAMINE|METH-AMPHETAMINE",
                            data$Descript) != -1, 1, 0)
 data$opium <- ifelse(regexpr("OPIUM", data$Descript) != -1, 1, 0)
 
+#data$violent <- ifelse(data$Category %in% violent_crime, 1, 0)
+
+data$theft <- ifelse(data$Category %in% c("LARCENY/THEFT","LARCENY THEFT"),
+                     1, 0)
+data$robbery <- ifelse(data$Category %in% c("ROBBERY"), 1, 0)
+data$assault <- ifelse(data$Category %in% c( "ASSAULT"), 1, 0)
+data$vehicle_theft <- ifelse(data$Category %in% c("VEHICLE THEFT", 
+                                                  "MOTOR VEHICLE THEFT",
+                                                  "MOTOR VEHICLE THEFT?"),
+                             1, 0)
+data$burglary <- ifelse(data$Category %in% c("BURGLARY"), 1, 0)
+
+
 sum(is.na(data$CatDesc))
 
-##create variables
-#census <- tract_wide[c(1,3,4, 5, 45, 59, 63, 69, 74, 76, 82:92, 116, 122, 140, 144:150)]
+data$quarter <- quarter(data$Date)
+
 
 rm(list=(setdiff(ls(),'data')))
+

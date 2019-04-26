@@ -11,7 +11,7 @@ time_period <- function(df, start, end, by, cat_of_interest="BlueCollar"){
   return(tmp)
 }
 
-## DO CENSUS TRACTS 127 
+## DO CENSUS TRACTS 127
 #mapped_data <-  time_period(mapped_data2010_2018, 2010, 2018, 3)
 mapped_data <- mapped_data2010_2018 %>% group_by(year, GEOID_tract) %>%
   summarize(count=n())
@@ -38,7 +38,7 @@ census_tract_changes2[is.na(census_tract_changes2)] = 0
 mapped_data <- left_join(mapped_data, census_tract_changes[,c(1,3,4)],
                          by=c("year", "GEOID_tract"="GEOID"))
 
-mapped_data2 <- mapped_data %>% group_by(GEOID_tract, year) %>% 
+mapped_data2 <- mapped_data %>% group_by(GEOID_tract, year) %>%
   summarize(count=sum(count))
 mapped_data2 <- left_join(mapped_data2, census_tract_changes2,
                           by=c("year", "GEOID_tract"="GEOID"))
@@ -78,11 +78,11 @@ true_2018_data2 <- left_join(true_2018_data, regression_data2[,c(1,2,4)],
                              by="GEOID_tract") %>% drop_na()
 true_2018_data2$preds <- predict(m1, newdata=true_2018_data2) # b/c same census rates
 true_2018_data2$dif <- true_2018_data2$preds-true_2018_data2$count
-ggplot(data=true_2018_data2) + 
-  geom_point(aes(x=preds, y=count)) + theme_bw() + 
+ggplot(data=true_2018_data2) +
+  geom_point(aes(x=preds, y=count)) + theme_bw() +
   ylab("True Crime Change") + xlab("Predicted Crime Change")
 
-ggplot(data=true_2018_data2) + 
+ggplot(data=true_2018_data2) +
   geom_boxplot(aes(x=0, y=dif)) +
   theme_bw() + ylab("Count Difference Error") +
   xlab("Category")

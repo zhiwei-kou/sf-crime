@@ -6,6 +6,9 @@ setwd("~/Cal/Spring2019/Stat222")
 
 library(tidyverse)
 fn <- list.files("data/", full.names = TRUE)
+
+## data0 needs to be 
+## Police_Department_Incident_Reports__Historical_2003_to_May_2018.csv
 data0 <- read_csv(fn[2], col_types = cols(
   IncidntNum = col_integer(),
   Category = col_character(),
@@ -29,6 +32,9 @@ data0$year <- year(data0$Date)
 
 data0 <- filter(data0, year < 2018) # keep earlier data...data dif now
 
+
+### data1 needs to be
+## "Police_Department_Incident_Reports__2018_to_Present.csv"
 data1 <- read_csv(fn[1],
                   col_names = c("IncidntDatetime","Date",
                                 "Time", "year",

@@ -1,4 +1,4 @@
-GEOID_tract,mta_stops,Private,SFCCD,SFUSD,count
+GEOID_tract,mta_stops,school_Private,school_SFCCD,school_SFUSD,school_total
 06075010100,31,1,0,1,2
 06075010200,33,1,0,1,2
 06075010300,14,1,0,1,2

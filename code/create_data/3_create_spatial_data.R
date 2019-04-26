@@ -69,7 +69,7 @@ wide_school_data <- school_data %>% group_by(`CCSF Entity`, GEOID_tract) %>%
   summarize(count=n()) %>% spread(`CCSF Entity`, count) 
 
 overall_school_data <- school_data %>% group_by( GEOID_tract) %>%
-  summarize(count=n())
+  summarize(total=n())
 
 wide_school_data <- full_join(wide_school_data, overall_school_data,
                               by = "GEOID_tract")
@@ -81,7 +81,9 @@ spatial_features_data <- full_join(summary_transit,
                                    )
 
 spatial_features_data[is.na(spatial_features_data)] <- 0
-
+names(spatial_features_data)[3:6] <- paste("school", 
+                                           names(spatial_features_data)[3:6],
+                                           sep="_")
 
 write_csv(spatial_features_data, "data/spatial_features_noyear.csv")
 

@@ -25,4 +25,6 @@ crime_burglary_data <- mapped_data2010_2018 %>%
   summarize(crime=n())
 
 
-### merge data on census_tract_2009_2017, data311, spatial_data_no_year
+### merge each _data df with census_tract_2009_2017, 
+### data311_quarter, spatial_data_no_year
+## data_geo, data_housing

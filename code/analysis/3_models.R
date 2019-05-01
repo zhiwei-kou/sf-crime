@@ -106,7 +106,7 @@ visualize_results <- function(cv_results, model_type){
       xlab("Lambda") + ylab("MSE") + scale_color_discrete("Type") +
       ggtitle("LASSO Lambdas") )
   }
-  else if(model_type=="random forrest"){
+  else if(model_type=="random forest"){
     results <- data.frame()
     for(r in names(cv_results)){
       if(!is.null(cv_results[[r]])){
@@ -147,7 +147,7 @@ all_geos_lasso_burg = modeling(crime_burglary_data, model_type="lasso", cols= c(
                                            "income_index" ,"age_index"  ,
                                            "working_class"))
 
-rmall_geos_rf_burg = modeling(crime_burglary_data, model_type="random forest", cols= c("land", "water", "eviction_n", "quarter",
+all_geos_rf_burg = modeling(crime_burglary_data, model_type="random forest", cols= c("land", "water", "eviction_n", "quarter",
                                            "N_calls_311", "mta_stops", "school_total",
                                            "Estimate_Total","prop_rented",
                                            "prop_male", "prop_african_american",

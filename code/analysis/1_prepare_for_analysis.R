@@ -58,6 +58,14 @@ assertthat::are_equal(nrow(crime_vehicle_theft_data), nrow(crime_vehicle_theft_d
 assertthat::are_equal(nrow(crime_burglary_data), nrow(crime_burglary_data0))
 
 rm(list=(setdiff(ls(),c('crime_theft_data', 'crime_robbery_data',
-                        'crime_assault_data', 'crime_vehicle_theft_data',
+                        'crime_assualt_data', 'crime_vehicle_theft_data',
                         'crime_burglary_data'))))
 
+write_csv(crime_theft_data, "data/crime_theft_data.csv")
+write_csv(crime_burglary_data, "data/crime_burglary_data.csv")
+write_csv(crime_robbery_data, "data/crime_robbery_data.csv")
+write_csv(crime_vehicle_theft_data, "data/crime_vehicle_theft_data.csv")
+write_csv(crime_assualt_data, "data/crime_assualt_data.csv")
+
+# check = crime_theft_data
+# check[,c("prop_african_american")]

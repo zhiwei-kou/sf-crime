@@ -15,7 +15,7 @@ library(randomForest)
 library(caret)
 ## can check time by package tictoc
 library(tictoc)
-create_cv_geo  <- function(geo_data, method, cols,
+create_cv_geo  <- function(geo_data, method, columns,
                        tuneGrid=NULL, test_yr){
   #tic("create data")
   tmp = geo_data %>% filter(year<test_yr)
@@ -24,9 +24,10 @@ create_cv_geo  <- function(geo_data, method, cols,
                                 horizon=4,
                                 skip=4,
                                 fixedWindow = F) # each year has 4
-  tmp_x = tmp[, which(names(tmp) %in% cols)]
+  tmp_x = tmp[, which(names(tmp) %in% columns)]
+  
   tmp_test = geo_data %>% filter(year==test_yr)
-  tmp_test_x = tmp_test[, which(names(tmp_test) %in% cols)]
+  tmp_test_x = tmp_test[, which(names(tmp_test) %in% columns)]
   tmp_test_y = log(tmp_test[['crime']])
   #toc()
   
@@ -34,8 +35,8 @@ create_cv_geo  <- function(geo_data, method, cols,
   if(is.null(tuneGrid)){
     if(method=="glmnet") tuneGrid <- expand.grid(alpha = 1,
                                                  lambda = seq(0.001,0.1,by = 0.001))
-    if(method=="rf") tuneGrid <- expand.grid(mtry=seq(1, length(cols)))
-    if(method=="parRF") tuneGrid <- expand.grid(mtry=seq(1, length(cols)))
+    if(method=="rf") tuneGrid <- expand.grid(mtry=seq(1, length(columns)))
+    if(method=="parRF") tuneGrid <- expand.grid(mtry=seq(1, length(columns)))
   }
   
   #tic("cv model")
@@ -66,6 +67,9 @@ create_cv_geo  <- function(geo_data, method, cols,
     geo_result <- append(geo_result,
                          list(importance = cv_model$finalModel$importance))
   }
+  if(method %in% c('xgbTree')){
+    
+  }
   #toc()
   return(geo_result)
 }
@@ -80,11 +84,14 @@ get_output <- function(list_data, geoid, method){
   if(method %in% c('rf','parRF')){
     test_preds = as.vector(predict(list_data$best_model, 
                                    newx=as.matrix(list_data$test_x)))
+    print(nrow(list_data$test_x))
+    print(length(test_preds))
   }
   
   test_results = cbind(list_data$test_x, test_preds)
   test_results = cbind(test_results, true_y=list_data$true_y)
-  test_results$mse <- (test_results[['test_preds']]-list_data[['true_y']])^2
+  test_results$resid <- test_results[['test_preds']]-list_data[['true_y']]
+  test_results$mse <- (test_results$resid)^2
   test_results$GEOID <- geoid
   return(test_results)
 }
@@ -95,7 +102,7 @@ check_window_data <- function(data){
   return(unique(fail$GEOID))
 }
 
-create_outputs <- function(data, method, cols,
+create_outputs <- function(data, method, columns,
                            tuneGrid=NULL, test_yr=2017){
   # http://topepo.github.io/caret/available-models.html
   geo_split <- split(data, data$GEOID) # split data
@@ -107,7 +114,8 @@ create_outputs <- function(data, method, cols,
   }
   
   best_params_geo = lapply(geo_split, create_cv_geo, method=method,
-                          cols=cols, tuneGrid=tuneGrid, test_yr=test_yr)
+                          columns=columns, tuneGrid=tuneGrid, test_yr=test_yr)
+  
   if(method=='glmnet'){
     results <- do.call("rbind",
                        mapply(FUN=function(list_dat, geo) get_output(list_dat, geo, method),
@@ -126,7 +134,7 @@ create_outputs <- function(data, method, cols,
 }
 
 assault_results <- create_outputs(crime_assualt_data, method='rf', 
-                                  cols=c("land", "water", "N_housing", "quarter",
+                                  columns=c("land", "water", "N_housing", "quarter",
                                          "N_calls_311", "mta_stops", "school_total",
                                          "Estimate_Total","prop_rented",
                                          "prop_male", "prop_african_american",
@@ -135,4 +143,14 @@ assault_results <- create_outputs(crime_assualt_data, method='rf',
                                          "prop_stable","racial_index" ,
                                          "income_index" ,"age_index"  ,
                                          "working_class"))
+predictions <- assault_results$df_results
+
+ggplot(data=predictions, aes(x=true_y, y=resid)) + 
+  geom_point() + geom_smooth() + theme_bw() + 
+  xlab("True y") + ylab("Residual")
+
+install.packages("drat", repos="https://cran.rstudio.com")
+drat:::addRepo("dmlc")
+install.packages("xgboost", repos="http://dmlc.ml/drat/", type = "source")
+
 

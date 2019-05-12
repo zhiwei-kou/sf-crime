@@ -30,7 +30,7 @@ race_names <- gsub("( |!!)", "_",
                    gsub("(Estimate!!Total!!|,)","",
                         variables$label[variables$name %in% race_vars]))
 
-housing_vars <- c("B25008_002","B25008_003")
+housing_vars <- c("B25008_002","B25008_003", "B25002_003")
 housing_names <- gsub("( |!!)", "_", 
                       gsub("(Estimate!!Total!!|,)","",
                            variables$label[variables$name %in% housing_vars]))
@@ -63,6 +63,7 @@ of_interest_names <- c(population_names, income_names, race_names,
 translation <- data.frame(variable=of_interest, 
                           census_var=of_interest_names, stringsAsFactors = FALSE)
 
+write_csv(translation, 'sf-crime/final_pres/census_var_dict.csv')
 summary(table(translation$census_var))
 
 create_census_data <- function(years, geography){
@@ -112,12 +113,6 @@ tract_wide %>% group_by(year) %>% summarize(pop=sum(Estimate_Total))
 
 
 ## create additional values
-# [7] "prop_rented"              "prop_male"               
-# [9] "prop_african_american"    "prop_under_poverty_level"
-# [11] "prop_vacant_houses"       "prop_stable"             
-# [13] "racial_index"             "income_index"            
-# [15] "age_index"                "working_class"           
-# [17] "land"                     "water"    
 # fraction of male population, fraction of black population, 
 # fraction of hispanic population, fraction of population
 # under the poverty level, fraction of vacant households, 
@@ -139,6 +134,7 @@ tract_wide %>% group_by(year) %>% summarize(pop=sum(Estimate_Total))
 
 # race index sum p_r * ln(1/p_r)
 # diveristy index = 1 - sum p^2
+# actually all is SD from differernt groups
 
 # get first varrs
 tract_wide <- tract_wide %>% 
@@ -178,21 +174,31 @@ tract_wide <- tract_wide %>%
            `Female_Associate's_degree`,
          bach_or_more=`Male_Bachelor's_degree`+`Male_Master's_degree`+Male_Professional_school_degree+
            Female_Doctorate_degree+`Female_Bachelor's_degree`+`Female_Master's_degree`+Female_Professional_school_degree+
-           Female_Doctorate_degree
+           Female_Doctorate_degree,
+         working_class=With_income_1_to_9999_or_loss+With_income_10000_to_14999+With_income_15000_to_24999+With_income_25000_to_34999+
+           With_income_35000_to_49999
          ) %>%
   mutate(prop_male=Male/Estimate_Total,
          prop_black=Not_Hispanic_or_Latino_Black_or_African_American_alone/Estimate_Total,
          prop_hispanic=Hispanic_or_Latino/Estimate_Total,
+         pop_workingclass=working_class/Estimate_Total,
          prop_under_poverty_level=Income_in_the_past_12_months_below_poverty_level/Estimate_Total,
-         #prop_vacant=,
+         prop_vacant=Vacant/(Owner_occupied+Renter_occupied),
+         prop_rented=Renter_occupied/(Owner_occupied+Renter_occupied),
          prop_rented_to_owned=ifelse(Owner_occupied==0,
                                      Renter_occupied,Renter_occupied/Owner_occupied), # just keep renter occupied #
          prop_stable=Same_house_1_year_ago/Estimate_Total)
 
+# diversity_f <- function(df, vars) {
+#   values = which(names(df) %in% vars)
+#   est_total = which(names(df)=='Estimate_Total')
+#   return(1 - sum((as.numeric(c(df[values]))/as.numeric(df[est_total]))^2))
+# }
+
 diversity_f <- function(df, vars) {
   values = which(names(df) %in% vars)
   est_total = which(names(df)=='Estimate_Total')
-  return(1 - sum((as.numeric(c(df[values]))/as.numeric(df[est_total]))^2))
+  return(sd((as.numeric(c(df[values]))/as.numeric(df[est_total]))))
 }
 
 tract_wide$racial_index <- 
@@ -235,15 +241,91 @@ map_sf <- tracts("CA","San Francisco", year=2016)
 map_sf <- map_sf@data # just grab associated land and mass data
 names(map_sf)[9:10] <- c("land","water")
 map_sf <- map_sf[,c(4,9,10)]
+map_sf$land <- as.numeric(map_sf$land)
+map_sf$water <- as.numeric(map_sf$water)
 
 tract_wide <- left_join(tract_wide, map_sf, by="GEOID")
 tract_wide <- tract_wide %>% filter(land>0)
 # want area with at least some ground
 
-write_csv(tract_wide, "census_tract_2009_2017.csv")
-write_csv(block_wide, "census_block_2013_2017.csv")
-write_csv(census_data_tract, "census_tract_2009_2017_long.csv")
-write_csv(census_data_block, "census_block_2013_2017_long.csv")
+## add cluster id's
+cluster_data <- function(data,  h, method="ward.D"){
+  
+  tmp_census = data  %>%
+    group_by(GEOID) %>% 
+    select(-year, -NAME) %>%
+    summarize_all(mean)
+  tmp_census_scale = scale(tmp_census[,-1]) # just scale without GEOID
+  
+  geoids = tmp_census$GEOID
+  key = paste('cluster_id', h , sep="_")
+  if(method=='samesize'){
+    ids = kmvar(tmp_census_scale, clsize=ceiling(nrow(tmp_census)/h))
+  }else{
+    distance_mat = dist(tmp_census_scale)
+    clusters = hclust(distance_mat, method=method)
+    ids = cutree(clusters, h)
+  }
+  print(table(ids))
+  df = data.frame(GEOID=geoids, stringsAsFactors = FALSE)
+  df[[key]] = ids
+  return(df)
+}
+
+kmvar <- function(mat, clsize=10, method=c('random','maxd', 'mind', 'elki')){
+  k = ceiling(nrow(mat)/clsize)
+  km.o = kmeans(mat, k)
+  labs = rep(NA, nrow(mat))
+  centd = lapply(1:k, function(kk){
+    euc = t(mat)-km.o$centers[kk,]
+    sqrt(apply(euc, 2, function(x) sum(x^2)))
+  })
+  centd = matrix(unlist(centd), ncol=k)
+  clsizes = rep(0, k)
+  if(method[1]=='random'){
+    ptord = sample.int(nrow(mat))
+  } else if(method[1]=='elki'){
+    ptord = order(apply(centd, 1, min) - apply(centd, 1, max))
+  } else if(method[1]=='maxd'){
+    ptord = order(-apply(centd, 1, max))
+  } else if(method[1]=='mind'){
+    ptord = order(apply(centd, 1, min))
+  } else {
+    stop('unknown method')
+  }
+  for(ii in ptord){
+    bestcl = which.max(centd[ii,])
+    labs[ii] = bestcl
+    clsizes[bestcl] = clsizes[bestcl] + 1
+    if(clsizes[bestcl] >= clsize){
+      centd[,bestcl] = NA
+    }
+  }
+  return(labs)
+}
+
+create_clusters <- function(data, method="samesize"){
+  clust5 = cluster_data(data, 5, method)
+  clust10 = cluster_data(data, 10, method)
+  clust15 = cluster_data(data, 15, method)
+  
+  ids = list(clust5, clust10, clust15) %>% reduce(left_join)
+  new_df = left_join(data, ids, by="GEOID")
+  return(new_df)
+}
+
+
+tract_wide_ss = create_clusters(tract_wide, method='samesize')
+tract_wide_wardd = create_clusters(tract_wide, method='ward.D')
+
+## different census ids
+write_csv(tract_wide_ss, 'census_tract_2009_2017.csv')
+write_csv(tract_wide_wardd, 'census_tract_2009_2017_wardd_clusters.csv')
+
+# write_csv(tract_wide, "census_tract_2009_2017.csv")
+# write_csv(block_wide, "census_block_2013_2017.csv")
+# write_csv(census_data_tract, "census_tract_2009_2017_long.csv")
+# write_csv(census_data_block, "census_block_2013_2017_long.csv")
 # translation <- data.frame(name=c(population_vars, income_vars, race_vars,
 #                                      housing_vars, mobility_vars, education_vars), 
 #                           label=c(population_names, income_names, race_names,

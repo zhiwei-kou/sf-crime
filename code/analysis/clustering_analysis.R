@@ -1,10 +1,10 @@
 #loading packages
 library(ClustOfVar)
 
-crime_assualt <- read.csv("../data/crime_assualt_data.csv")
+crime_assualt <- read.csv("../../data/crime_assualt_data.csv")
 dim(crime_assualt)
 
-features <- crime_assualt[,6:183]
+features <- crime_assualt[,6:181]
 features_scaled = scale(features)
 
 ## PCA
@@ -15,9 +15,10 @@ summary(pca)
 
 
 ## K-means clustering
-k.means <- kmeansvar(X.quanti=features_scaled, init=10)
+k.means <- kmeansvar(X.quanti=features_scaled, init=20)
 summary(k.means)
-k.means$cluster
+variableCluster <- sort(k.means$cluster)
+write.csv(variableCluster, file="../../data/variable20Clusters.csv")
 
 
 ## Hierachical clustering
